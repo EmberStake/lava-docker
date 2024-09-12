@@ -1,0 +1,66 @@
+services:
+  node:
+    image: ${LAVA_DOCKER_IMAGE_REGISTRY:-ghcr.io/emberstake/lava-docker}/node:${NODE_TAG:-v3.1.0}
+    build:
+      dockerfile: docker/node/Dockerfile
+      context: .
+    restart: unless-stopped
+    profiles:
+      - node
+    networks:
+      lava:
+    environment:
+      - CHAIN_ID=${NODE_CHAIN_ID:-lava-mainnet-1}
+      - MONIKER=${NODE_MONIKER:-EmberStakeTools}
+      - WALLET=${NODE_WALLET_NAME:-example}
+    logging:
+      options:
+        max-size: "12m"
+        max-file: "5"
+    command:
+      - run
+      - start
+      - --log_level
+      - ${NODE_LOG_LEVEL:-info}
+      - --api.enable
+      - --grpc.enable
+      - --grpc.address
+      - "0.0.0.0:9090"
+      - --grpc-web.enable
+      - --grpc-web.address
+      - "0.0.0.0:9091"
+      - --proxy_app
+      - "tcp://0.0.0.0:26658"
+      - --p2p.laddr
+      - "tcp://0.0.0.0:26656"
+      - --p2p.seeds
+      - ${SEEDS}
+      - --p2p.persistent_peers
+      - ${PERSISTENT_PEERS}
+      - --p2p.external-address
+      - ${NODE_EXTERNAL_IP}:${NODE_P2P_PORT}
+      - --rpc.laddr
+      - "tcp://0.0.0.0:26657"
+    volumes:
+      - type: bind
+        source: ./configs/node/init.sh
+        target: /init.sh
+        read_only: true
+      - type: volume
+        source: node_data
+        target: /home/pilot/.lava/data
+      - type: volume
+        source: node_config
+        target: /home/pilot/.lava/config
+      - type: volume
+        source: node_keyring
+        target: /home/pilot/.lava/keyring-file
+    ports:
+      - "${NODE_P2P_PORT}:26656" # p2p
+      - "${NODE_RPC_PORT}:26657"
+volumes:
+  node_config:
+  node_data:
+  node_keyring:
+networks:
+  lava:
